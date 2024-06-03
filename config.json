@@ -1,0 +1,6 @@
+{
+    "BOT_TOKEN": "None",
+    "WHISPER_MODEL": "None",
+    "SILERO_MODELS": "text2speech/model",
+    "PYTESSERACT_LANG": "eng+rus"
+}
