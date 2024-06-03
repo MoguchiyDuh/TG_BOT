@@ -4,18 +4,16 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 import pytesseract
 import os
+from dotenv import load_dotenv
 from time import localtime, strftime
-import json
 from fsm import FSM
 import keyboard
 
 
-with open("config.json", "r") as file:
-    config = json.load(file)
-
+load_dotenv()
 
 router = Router()
-LANG = config["PYTESSERACT_LANG"]
+LANG = os.getenv("PYTESSERACT_LANG")
 IMAGES_DIR = "image2text/images"
 
 

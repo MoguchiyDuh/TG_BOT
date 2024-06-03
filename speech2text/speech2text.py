@@ -3,28 +3,25 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 import os
+from dotenv import load_dotenv
 from time import localtime, strftime
 import whisper
-import json
 from fsm import FSM
 import keyboard
 
 
-with open("config.json", "r") as file:
-    config: dict = json.load(file)
-
+load_dotenv()
 
 router = Router()
 FILES_DIR = "speech2text/audio_files"
+MODEL = os.getenv("WHISPER_MODEL")
 
-
-if os.path.isfile(config["WHISPER_MODEL"]):
-    MODEL = whisper.load_model(config["WHISPER_MODEL"])
+if os.path.isfile(MODEL):
+    MODEL = whisper.load_model(MODEL)
 else:
     MODEL = whisper.load_model("tiny", download_root="speech2text/model")
-    config["WHISPER_MODEL"] = "speech2text/model/tiny.pt"
-    with open("config.json", "w") as file:
-        file.write(json.dumps(config, indent=len(config.keys())))
+    MODEL = "speech2text/model/tiny.pt"
+    os.environ["WHISPER_MODEL"] = MODEL
 
 
 def recognize(audio_path: str) -> str:

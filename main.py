@@ -3,22 +3,22 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 import asyncio
-import json
+import os
+from dotenv import load_dotenv
 import keyboard
 from image2text import image2text
 from speech2text import speech2text
 from text2speech import text2speech
 
 
-with open("config.json", "r") as file:
-    config: dict = json.load(file)
+load_dotenv()
 
-if config["BOT_TOKEN"] == "None":
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if BOT_TOKEN == "None":
     raise Exception(
         'Token is not found, please set "BOT_TOKEN" in config.json. To see more, read README.md'
     )
 
-BOT_TOKEN = config["BOT_TOKEN"]
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
 

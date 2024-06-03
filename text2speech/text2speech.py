@@ -3,21 +3,20 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 import os
+from dotenv import load_dotenv
 from time import localtime, strftime
 import torch
-import json
 from fsm import FSM
 import keyboard
 
 
-with open("config.json", "r") as file:
-    config = json.load(file)
-
+load_dotenv()
 
 router = Router()
 DEFAULT_DIR = "text2speech/model"
 LANG = ""
 SPEAKER = ""
+SILERO_MODEL = os.getenv("SILERO_MODEL")
 MODEL = None
 FILES_DIR = "text2speech/tts_audio"
 
@@ -33,10 +32,8 @@ def create_models_dict(directory: str) -> dict:
     return res
 
 
-if type(config["SILERO_MODELS"]) == dict:
-    SILERO_MODELS: dict = config["SILERO_MODELS"]
-elif os.listdir(config["SILERO_MODELS"]):
-    SILERO_MODELS = create_models_dict(config["SILERO_MODELS"])
+if os.listdir(SILERO_MODEL):
+    SILERO_MODELS = create_models_dict(SILERO_MODEL)
 else:
     torch.hub.download_url_to_file(
         "https://models.silero.ai/models/tts/en/v3_en.pt",
