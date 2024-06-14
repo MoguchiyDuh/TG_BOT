@@ -20,8 +20,6 @@ if os.path.isfile(MODEL):
     MODEL = whisper.load_model(MODEL)
 else:
     MODEL = whisper.load_model("tiny", download_root="speech2text/model")
-    MODEL = "speech2text/model/tiny.pt"
-    os.environ["WHISPER_MODEL"] = MODEL
 
 
 def recognize(audio_path: str) -> str:
@@ -33,7 +31,7 @@ def recognize(audio_path: str) -> str:
 @router.message(Command("speech_to_text🎤"))
 async def set_state_sending_audio(message: Message, state: FSMContext):
     await state.set_state(FSM.sending_audio)
-    await message.answer("Waiting for your audio:", reply_markup=keyboard.back_key)
+    await message.answer("Send your audio:", reply_markup=keyboard.back_key)
 
 
 @router.message(FSM.sending_audio)
@@ -49,7 +47,9 @@ async def speech_to_text(message: Message, bot: Bot):
         audio_info = await bot.get_file(audio_id)
         extension = os.path.splitext(audio_info.file_path)[1]
         timecode = strftime("%Y.%m.%d-%H.%M.%S", localtime())
-        audio_path = f"{FILES_DIR}/{message.from_user.id}-{timecode}{extension}"
+        if not os.path.isdir(f"{FILES_DIR}/{message.from_user.id}"):
+            os.mkdir(f"{FILES_DIR}/{message.from_user.id}")
+        audio_path = f"{FILES_DIR}/{message.from_user.id}/{timecode}{extension}"
         await bot.download_file(file_path=audio_info.file_path, destination=audio_path)
         await message.answer(recognize(audio_path))
         # os.remove(audio_path)

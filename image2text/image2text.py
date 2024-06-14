@@ -24,7 +24,7 @@ def parse(image_path: str) -> str:
 @router.message(Command("text_from_image🖼"))
 async def set_state_sending_image(message: Message, state: FSMContext):
     await state.set_state(FSM.sending_image)
-    await message.answer("Waiting your image:", reply_markup=keyboard.back_key)
+    await message.answer("Send your image:", reply_markup=keyboard.back_key)
 
 
 @router.message(FSM.sending_image)
@@ -39,7 +39,9 @@ async def image_to_text(message: Message, bot: Bot):
         image_info = await bot.get_file(image_id)
         extension = os.path.splitext(image_info.file_path)[1]
         timecode = strftime("%Y.%m.%d-%H.%M.%S", localtime())
-        image_path = f"{IMAGES_DIR}/{image_id}-{timecode}-{extension}"
+        if not os.path.isdir(f"{IMAGES_DIR}/{message.from_user.id}"):
+            os.mkdir(f"{IMAGES_DIR}/{message.from_user.id}")
+        image_path = f"{IMAGES_DIR}/{message.from_user.id}/{timecode}.{extension}"
         await bot.download_file(file_path=image_info.file_path, destination=image_path)
         result = parse(image_path)
         if result != "":
@@ -48,4 +50,4 @@ async def image_to_text(message: Message, bot: Bot):
             await message.answer("Empty")
         # os.remove(image_path)
     except Exception:
-        await message.answer("TRY AGAIN❗:")
+        await message.answer("SEND YOUR PHOTO❗:")

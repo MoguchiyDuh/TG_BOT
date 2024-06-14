@@ -1,5 +1,5 @@
+torch --index-url https://download.pytorch.org/whl/cu121
 aiogram
 pytesseract
 openai-whisper
-torch
 python-dotenv

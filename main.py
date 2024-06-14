@@ -9,6 +9,7 @@ import keyboard
 from image2text import image2text
 from speech2text import speech2text
 from text2speech import text2speech
+from picture_gen import picture_gen
 
 
 load_dotenv()
@@ -16,7 +17,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if BOT_TOKEN == "None":
     raise Exception(
-        'Token is not found, please set "BOT_TOKEN" in config.json. To see more, read README.md'
+        'Token is not found, please set "BOT_TOKEN" in .env. To see more, read README.md'
     )
 
 bot = Bot(BOT_TOKEN)
@@ -41,7 +42,7 @@ async def cancel(message: Message, state: FSMContext):
 
 async def main():
     print("Started")
-    dp.include_routers(image2text.router, speech2text.router, text2speech.router)
+    dp.include_routers(image2text.router, speech2text.router, text2speech.router, picture_gen.router)
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 

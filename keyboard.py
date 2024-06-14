@@ -11,6 +11,10 @@ class SPEAKER_Callback(CallbackData, prefix="speaker"):
     speaker: str
 
 
+class GEN_Callback(CallbackData, prefix="gen"):
+    key: str
+
+
 def create_inline_lang_keyboard(languages) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     [
@@ -46,12 +50,21 @@ def create_inline_speakers_keyboard(
         return builder.as_markup()
 
 
+def create_inline_gen_keyboard(config: list) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Generate✔", callback_data=f"gen:generate")
+    [builder.button(text=line, callback_data=f"gen:{line}") for line in config]
+    builder.adjust(1, *([3] * (len(config) // 3)))
+    return builder.as_markup()
+
+
 def create_reply_keyboard() -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
     keyboard_list = (
         "/text_from_image🖼",
         "/speech_to_text🎤",
         "/text_to_speech💬",
+        "/image_generation🖼",
         "/status❓",
     )
     [builder.button(text=key) for key in keyboard_list]

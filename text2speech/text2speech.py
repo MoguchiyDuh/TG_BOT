@@ -96,7 +96,7 @@ async def speaker_handler(
     global SPEAKER
     SPEAKER = callback_data.speaker
     await state.set_state(FSM.sending_text)
-    await query.message.answer("Waiting for your text:")
+    await query.message.answer("Enter your text:")
 
 
 @router.message(FSM.sending_text)
@@ -104,7 +104,9 @@ async def tts(message: Message):
     global MODEL, FILES_DIR, SPEAKER
     if message.text != None:
         timecode = strftime("%Y.%m.%d-%H.%M.%S", localtime())
-        path = f"{FILES_DIR}/{message.from_user.id}-{timecode}.wav"
+        if not os.path.isdir(f"{FILES_DIR}/{message.from_user.id}"):
+            os.mkdir(f"{FILES_DIR}/{message.from_user.id}")
+        path = f"{FILES_DIR}/{message.from_user.id}/{timecode}.wav"
         try:
             create_tts_file(model=MODEL, path=path, text=message.text, speaker=SPEAKER)
             await message.answer_audio(
@@ -112,8 +114,6 @@ async def tts(message: Message):
             )
             # os.remove(path)
         except Exception:
-            await message.answer(
-                "Text is too long or you've written a text in a wrong language"
-            )
+            await message.answer("Text is too long or wrong language")
     else:
         await message.answer("SEND YOUR TEXT❗:")
