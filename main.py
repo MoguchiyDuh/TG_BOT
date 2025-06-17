@@ -1,16 +1,16 @@
-from aiogram import Bot, Dispatcher
-from aiogram.filters import CommandStart, Command
-from aiogram.types import Message
-from aiogram.fsm.context import FSMContext
 import asyncio
 import os
+
+from aiogram import Bot, Dispatcher
+from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
 from dotenv import load_dotenv
+
 import keyboard
 from image2text import image2text
 from speech2text import speech2text
 from text2speech import text2speech
-from picture_gen import picture_gen
-
 
 load_dotenv()
 
@@ -42,7 +42,7 @@ async def cancel(message: Message, state: FSMContext):
 
 async def main():
     print("Started")
-    dp.include_routers(image2text.router, speech2text.router, text2speech.router, picture_gen.router)
+    dp.include_routers(image2text.router, speech2text.router, text2speech.router)
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 

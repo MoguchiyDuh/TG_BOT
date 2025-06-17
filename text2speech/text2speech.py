@@ -1,14 +1,15 @@
-from aiogram import Router, F
-from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, FSInputFile
-from aiogram.fsm.context import FSMContext
 import os
-from dotenv import load_dotenv
-from time import localtime, strftime
-import torch
-from fsm import FSM
-import keyboard
+import tempfile
 
+import torch
+from aiogram import F, Router
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, FSInputFile, Message
+from dotenv import load_dotenv
+
+import keyboard
+from fsm import FSM
 
 load_dotenv()
 
@@ -16,9 +17,8 @@ router = Router()
 DEFAULT_DIR = "text2speech/model"
 LANG = ""
 SPEAKER = ""
-SILERO_MODEL = os.getenv("SILERO_MODEL")
+TTS_MODEL = os.getenv("TTS_MODEL")
 MODEL = None
-FILES_DIR = "text2speech/tts_audio"
 
 
 def create_models_dict(directory: str) -> dict:
@@ -32,41 +32,43 @@ def create_models_dict(directory: str) -> dict:
     return res
 
 
-if os.listdir(SILERO_MODEL):
-    SILERO_MODELS = create_models_dict(SILERO_MODEL)
+if os.listdir(TTS_MODEL):
+    TTS_MODELS = create_models_dict(TTS_MODEL)
 else:
     torch.hub.download_url_to_file(
         "https://models.silero.ai/models/tts/en/v3_en.pt",
         f"{DEFAULT_DIR}/v3_en.pt",
     )
-    SILERO_MODELS = create_models_dict(DEFAULT_DIR)
+    TTS_MODELS = create_models_dict(DEFAULT_DIR)
 
 
-def create_tts_file(
-    model, path: str, text: str, speaker: str, sample_rate: int = 48000
-):
-    model.save_wav(
-        text=text,
-        speaker=speaker,
-        sample_rate=sample_rate,
-        audio_path=path,
-    )
+def create_tts_file(model, text: str, speaker: str, sample_rate: int = 48000) -> str:
+    """Create a temporary TTS file and return its path"""
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+        temp_path = temp_file.name
+        model.save_wav(
+            text=text,
+            speaker=speaker,
+            sample_rate=sample_rate,
+            audio_path=temp_path,
+        )
+    return temp_path
 
 
 @router.message(Command("text_to_speech💬"))
 async def set_state_sending_text(message: Message):
-    global SILERO_MODELS
+    global TTS_MODELS
     await message.answer(
         "What language do you want to use?",
-        reply_markup=keyboard.create_inline_lang_keyboard(SILERO_MODELS.values()),
+        reply_markup=keyboard.create_inline_lang_keyboard(TTS_MODELS.values()),
     )
 
 
 @router.callback_query(keyboard.LANG_Callback.filter(F.lang != None))
 async def lang_handler(query: CallbackQuery, callback_data: keyboard.LANG_Callback):
-    global MODEL, SILERO_MODELS
+    global MODEL, TTS_MODELS, LANG
     LANG = callback_data.lang
-    for model_path, lang in SILERO_MODELS.items():
+    for model_path, lang in TTS_MODELS.items():
         if lang == LANG:
             break
 
@@ -101,19 +103,29 @@ async def speaker_handler(
 
 @router.message(FSM.sending_text)
 async def tts(message: Message):
-    global MODEL, FILES_DIR, SPEAKER
-    if message.text != None:
-        timecode = strftime("%Y.%m.%d-%H.%M.%S", localtime())
-        if not os.path.isdir(f"{FILES_DIR}/{message.from_user.id}"):
-            os.mkdir(f"{FILES_DIR}/{message.from_user.id}")
-        path = f"{FILES_DIR}/{message.from_user.id}/{timecode}.wav"
+    global MODEL, SPEAKER
+    if not message.text:
+        await message.answer("Please send text for conversion")
+        return
+
+    try:
+        # Create temporary file
+        temp_path = create_tts_file(model=MODEL, text=message.text, speaker=SPEAKER)
+
         try:
-            create_tts_file(model=MODEL, path=path, text=message.text, speaker=SPEAKER)
+            # Send the audio file
             await message.answer_audio(
-                audio=FSInputFile(path), reply_markup=keyboard.back_key
+                audio=FSInputFile(temp_path), reply_markup=keyboard.back_key
             )
-            # os.remove(path)
-        except Exception:
-            await message.answer("Text is too long or wrong language")
-    else:
-        await message.answer("SEND YOUR TEXT❗:")
+        finally:
+            # Clean up the temporary file
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+
+    except Exception as e:
+        print(f"Error in TTS: {e}")
+        await message.answer(
+            "Error generating speech. The text might be too long or in an unsupported language."
+        )

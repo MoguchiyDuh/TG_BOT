@@ -1,53 +1,64 @@
-from aiogram import Router, Bot
-from aiogram.filters import Command
-from aiogram.types import Message
-from aiogram.fsm.context import FSMContext
-import pytesseract
+import contextlib
 import os
-from dotenv import load_dotenv
-from time import localtime, strftime
-from fsm import FSM
-import keyboard
+import tempfile
 
+import pytesseract
+from aiogram import Bot, Router
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
+from dotenv import load_dotenv
+
+import keyboard
+from fsm import FSM
 
 load_dotenv()
 
 router = Router()
-LANG = os.getenv("PYTESSERACT_LANG")
-IMAGES_DIR = "image2text/images"
+PYTESSERACT_LANG = os.getenv("PYTESSERACT_LANG", "eng")
 
 
-def parse(image_path: str) -> str:
-    return pytesseract.image_to_string(image_path, lang=LANG)
+def extract_text(image_path: str) -> str:
+    """Extract text from image using pytesseract"""
+    try:
+        text = pytesseract.image_to_string(image_path, lang=PYTESSERACT_LANG).strip()
+        return text if text else "No text found in image"
+    except Exception as e:
+        return f"Error processing image: {str(e)}"
 
 
 @router.message(Command("text_from_image🖼"))
-async def set_state_sending_image(message: Message, state: FSMContext):
+async def handle_image_command(message: Message, state: FSMContext) -> None:
+    """Handle image to text command"""
     await state.set_state(FSM.sending_image)
     await message.answer("Send your image:", reply_markup=keyboard.back_key)
 
 
 @router.message(FSM.sending_image)
-async def image_to_text(message: Message, bot: Bot):
-    global IMAGES_DIR
-    try:
-        if message.photo != None:
-            image_id = message.photo[-1].file_id
-        elif message.document != None:
-            image_id = message.document.file_id
+async def process_image_message(message: Message, bot: Bot) -> None:
+    """Process incoming image message"""
+    if not any([message.photo, message.document]):
+        await message.answer("Please send an image file or photo.")
+        return
 
-        image_info = await bot.get_file(image_id)
-        extension = os.path.splitext(image_info.file_path)[1]
-        timecode = strftime("%Y.%m.%d-%H.%M.%S", localtime())
-        if not os.path.isdir(f"{IMAGES_DIR}/{message.from_user.id}"):
-            os.mkdir(f"{IMAGES_DIR}/{message.from_user.id}")
-        image_path = f"{IMAGES_DIR}/{message.from_user.id}/{timecode}.{extension}"
-        await bot.download_file(file_path=image_info.file_path, destination=image_path)
-        result = parse(image_path)
-        if result != "":
-            await message.answer(result)
-        else:
-            await message.answer("Empty")
-        # os.remove(image_path)
-    except Exception:
-        await message.answer("SEND YOUR PHOTO❗:")
+    try:
+        file_id = (
+            message.photo[-1].file_id if message.photo else message.document.file_id
+        )
+        file_info = await bot.get_file(file_id)
+
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+            await bot.download_file(file_info.file_path, temp_file.name)
+
+            try:
+                result = extract_text(temp_file.name)
+                await message.answer(result)
+            finally:
+                with contextlib.suppress(Exception):
+                    os.unlink(temp_file.name)
+
+    except Exception as e:
+        print(f"Image processing error: {e}")
+        await message.answer(
+            "Error processing image. Please try again with a different file."
+        )
